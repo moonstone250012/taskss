@@ -1,0 +1,139 @@
+import './style.css';
+
+let tasks = JSON.parse(localStorage.getItem('tasks')) || [];
+const tasksRoot = document.querySelector('.tasks');
+const list = tasksRoot.querySelector('.tasks-list');
+const count = tasksRoot.querySelector('.tasks-count');
+const clear = tasksRoot.querySelector('.tasks-clear');
+const form = document.forms.tasks;
+const input = form.elements.task;
+
+
+function saveTasksToStorage(tasks) {
+    localStorage.setItem('tasks', JSON.stringify(tasks));
+}
+
+function renderTasks(tasks){
+    let taskString = '';
+    tasks.forEach((task, index) => {
+        taskString += `
+        <li data-id="${index}"${task.complete ? 'class="task-complete"': ''}>
+            <input type="checkbox"${task.complete ? 'checked':''}>
+            <span>${task.text}</span>
+            <button type="button"></button>
+        </li>
+        `;
+    });
+    list.innerHTML = taskString;
+    count.innerText = tasks.filter(task => !task.complete).length;
+    clear.style.display = tasks.filter(task => task.complete).length ? 'block' : 'none';
+}
+
+function addTask(e) {
+    e.preventDefault();
+    const text = input.value.trim();
+    const complete = false;
+    tasks = [
+        ...tasks,
+        {
+            text,
+            complete
+        }
+    ];
+    renderTasks(tasks);
+    saveTasksToStorage(tasks);
+    input.value = '';
+}
+
+function updateTask(e) {
+    const id = parseInt(e.target.parentNode.getAttribute('data-id'),10);
+    let complete = e.target.checked;
+    tasks = tasks.map((task,index) => {
+        if (index === id) {
+            return {
+                ...task,
+                complete
+            };
+        }
+        return task;
+    });
+    renderTasks(tasks); 
+    saveTasksToStorage(tasks);
+}
+
+function deleteTask(e) {
+    if(e.target.nodeName.toLowerCase() !== 'button'){
+        return;
+    }
+    const id = parseInt(e.target.parentNode.getAttribute('data-id'), 10);
+    const text = e.target.previousElementSibling.innerText ;
+    if(window.confirm(`Do you want to delete ${text} ?`)){
+        tasks = tasks.filter((task, index) => index !== id);
+        renderTasks(tasks);
+        saveTasksToStorage(tasks);
+    }
+}
+
+
+function clearCompletedTasks() {
+    const count = tasks.filter(task => task.complete).length;
+
+    if(count == 0){
+        return;
+    }
+
+    if(window.confirm(`Do you want to delete ${count} tasks ?`)) {
+        tasks = tasks.filter(task => !task.complete);
+        renderTasks(tasks);
+        saveTasksToStorage(tasks);
+    }
+}
+
+
+function editTask(e) {
+    if (e.target.nodeName.toLowerCase() !== 'span')
+        return
+    const id = parseInt(e.target.parentNode.getAttribute('data-id'), 10);
+    const textTask = tasks[id].text;
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = textTask;
+
+
+    function handleEdit(e) {
+        e.stopPropagation();
+        const text = input.value;
+        if(input.value !== textTask){
+            tasks = tasks.map((task, index) => {
+                if(index == id) {
+                    return {
+                        ...task,
+                       text
+                    };
+                }
+                return task;
+            });
+            renderTasks(tasks);
+            saveTasksToStorage(tasks);
+        }
+        e.target.style.display = '';
+        input.removeEventListener('change', handleEdit);
+        input.remove();
+    }
+
+    e.target.style.display = 'none';
+    e.target.parentNode.append(input);
+    input.addEventListener('change', handleEdit);
+}
+
+function init() {
+    renderTasks(tasks);
+    form.addEventListener('submit', addTask);
+    list.addEventListener('change', updateTask);
+    list.addEventListener('click', deleteTask);
+    list.addEventListener('dblclick', editTask);
+    clear.addEventListener('click', clearCompletedTasks);
+}
+
+init();
